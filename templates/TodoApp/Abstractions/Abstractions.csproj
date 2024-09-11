@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Templates.TodoApp.Abstractions</RootNamespace>
+    <AssemblyName>Templates.TodoApp.Abstractions</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MemoryPack.Generator" Version="1.10.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+    <PackageReference Include="Stl.Fusion" Version="6.8.11" />
+    <PackageReference Include="Stl.Fusion.Ext.Contracts" Version="6.8.11" />
+    <PackageReference Include="Stl.Generators" Version="6.8.11" />
+  </ItemGroup>
+
+</Project>

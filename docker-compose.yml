@@ -1,0 +1,98 @@
+version: '3.4'
+services:
+  db:
+    image: "postgres"
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_HOST_AUTH_METHOD: "password"
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000"]
+
+  tutorial:
+    build:
+      context: .
+      target: tutorial
+    ports:
+     - "50005:50005"
+
+  sample_hello_world:
+    build:
+      context: .
+      target: sample_hello_world
+
+  sample_hello_cart:
+    build:
+      context: .
+      target: sample_hello_cart
+
+  sample_hello_blazor_server:
+    build:
+      context: .
+      target: sample_hello_blazor_server
+    ports:
+     - "5005:5005"
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:5005"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Logging__Console__FormatterName: ""
+
+  sample_hello_blazor_hybrid:
+    build:
+      context: .
+      target: sample_hello_blazor_hybrid
+    ports:
+      - "5005:5005"
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:5005"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Logging__Console__FormatterName: ""
+
+  sample_blazor:
+    build:
+      context: .
+      target: sample_blazor
+    ports:
+     - "5005:5005"
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:5005"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      Logging__Console__FormatterName: ""
+
+  sample_blazor_ws:
+    build:
+      context: .
+      target: sample_blazor_ws
+    ports:
+     - "80:80"
+    environment:
+      ASPNETCORE_URLS: "http://*:80"
+      Server__AssumeHttps: "true"
+      Logging__Console__FormatterName: ""
+
+  sample_mini_rpc:
+    build:
+      context: .
+      target: sample_mini_rpc
+
+  sample_multi_server_rpc:
+    build:
+      context: .
+      target: sample_multi_server_rpc
+
+  sample_benchmark:
+    build:
+      context: .
+      target: sample_benchmark
+    depends_on:
+      - db
+    links:
+      - db
+
+  sample_rpc_benchmark:
+    build:
+      context: .
+      target: sample_rpc_benchmark

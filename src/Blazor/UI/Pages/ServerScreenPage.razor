@@ -1,0 +1,60 @@
+@page "/serverScreen"
+@using System.Threading
+@using System.Globalization
+@inherits ComputedStateComponent<Screenshot>
+@inject IScreenshotService Screenshots
+
+@{
+    var screenshot = State.LastNonErrorValue;
+    var src = "data:image/jpeg;base64," + Convert.ToBase64String(screenshot.Data);
+    var error = State.Error;
+    _fps.AddFrame();
+    var fps = _fps.Value.ToString("N1");
+}
+<style>
+.fps {
+    position: absolute;
+    z-index: 1;
+    top: 5px;
+    left: 10px;
+    font-size: 1.5rem;
+    color: white
+}
+</style>
+
+<h1>Screencast - via ComputedStateComponent</h1>
+
+<WhenUpdateError Exception="@error"/>
+
+<Addons>
+    <Addon AddonType="AddonType.Start"><AddonLabel>Screenshot width (in pixels):</AddonLabel></Addon>
+    <TextEdit @bind-Text="@Width" type="search" />
+    @if (Width != ParsedWidth.ToString(CultureInfo.InvariantCulture)) {
+        <Addon AddonType="AddonType.End"><AddonLabel>(actual width: @ParsedWidth)</AddonLabel></Addon>
+    }
+</Addons>
+
+<Paragraph Margin="Margin.Is3.OnY" Style="position: relative">
+    <span class="fps">FPS: <b>@fps</b></span>
+    <img src="@src" alt="Server screen" width="99.9%"/><br/>
+</Paragraph>
+
+@code {
+    private readonly FpsCounter _fps = new();
+    private int ParsedWidth => Math.Max(8, Math.Min(1920, int.TryParse(Width, out var v) ? v : 0));
+
+    [Parameter]
+    public string Width { get; set; } = "1280"; // Parameter changes trigger InvalidateState() by default
+
+    protected override async Task OnInitializedAsync()
+        => await State.Update(); // An example showing how to load the State before the first render
+
+    protected override ComputedState<Screenshot>.Options GetStateOptions()
+        => new () {
+            InitialValue = new(),
+            UpdateDelayer = FixedDelayer.ZeroUnsafe,
+        };
+
+    protected override Task<Screenshot> ComputeState(CancellationToken cancellationToken)
+        => Screenshots.GetScreenshot(ParsedWidth, cancellationToken);
+}

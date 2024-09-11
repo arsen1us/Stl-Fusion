@@ -1,0 +1,37 @@
+﻿@page "/counter"
+@using System.Threading
+@using Samples.HelloBlazorHybrid.Abstractions
+@inherits ComputedStateComponent<string>
+@inject ICounterService CounterService
+@inject NavigationManager Nav
+
+@{
+    var state = State.ValueOrDefault;
+    var error = State.Error;
+}
+
+<h1>Counter</h1>
+
+<div class="alert alert-primary">
+    Open this page in <a href="@Nav.Uri" target="_blank">another window</a> to see it updates in sync.
+</div>
+@if (error != null) {
+    <div class="alert alert-warning" role="alert">Update error: @error.Message</div>
+}
+
+<p>Count: @state</p>
+
+<button class="btn btn-primary" @onclick="Increment">Increment</button>
+
+@code {
+     protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+     {
+         var count = await CounterService.Get(cancellationToken);
+         return $"{count}";
+     }
+
+    private async Task Increment()
+    {
+        await CounterService.Increment();
+    }
+}

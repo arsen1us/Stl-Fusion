@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <AssemblyName>Samples.HelloBlazorServer</AssemblyName>
+    <RootNamespace>Samples.HelloBlazorServer</RootNamespace>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stl.Fusion.Blazor" Version="6.8.11" />
+    <PackageReference Include="Stl.Fusion.Server" Version="6.8.11" />
+  </ItemGroup>
+
+  <!-- Roslyn generators/analyzers -->
+  <ItemGroup>
+    <PackageReference Include="Stl.Generators" Version="6.8.11" />
+  </ItemGroup>
+</Project>

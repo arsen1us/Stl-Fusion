@@ -1,0 +1,183 @@
+@page "/chat"
+@using System.Threading
+@inherits MixedStateComponent<ChatPage.Model, ChatPage.LocalsModel>
+@inject Session Session
+@inject IAuth Auth
+@inject IChatService Chats
+@inject UICommander UICommander
+@inject NavigationManager Nav
+
+@{
+    var locals = MutableState.Value;
+    var state = State.LastNonErrorValue;
+    var user = state.User;
+    var lastPage = state.Messages;
+    var error = State.Error;
+}
+
+<div>
+    <div class="float-right">
+        <Badge Color="Color.Light">
+            @(state.UserCount) <Blazorise.Icon Name="FontAwesomeIcons.Users"/>
+        </Badge>
+        <Badge Color="Color.Primary">
+            @(state.ActiveUserCount) <Blazorise.Icon Name="FontAwesomeIcons.Plug"/>
+        </Badge>
+    </div>
+    <h1>Chat</h1>
+</div>
+
+<Note>
+    Open <a href="@Nav.Uri" target="_blank">this page</a> or
+    <a href="/composition" target="_blank">Composition example</a>
+    in another window to see everything is updated in sync in real time.
+</Note>
+
+<WhenUpdateError Exception="@error"/>
+
+@if (user.IsAuthenticated()) {
+    @if (user.Name != locals.Name) {
+        <Badge Color="Color.Primary">Current name: @user.Name</Badge>
+    }
+    <form @onsubmit="SetName">
+        <Addons>
+            <Addon AddonType="AddonType.Start">
+                <AddonLabel>Your name</AddonLabel>
+            </Addon>
+            <TextEdit @bind-Text="@locals.Name" type="search" />
+            <Addon>
+                <Button Type="@ButtonType.Submit" Color="Color.Warning">Change</Button>
+            </Addon>
+        </Addons>
+    </form>
+}
+
+<Table Narrow="true" Striped="true" Margin="Margin.Is3.OnY">
+    <TableHeader ThemeContrast="ThemeContrast.Dark">
+        <TableRow>
+            <TableHeaderCell>User</TableHeaderCell>
+            <TableHeaderCell>Message</TableHeaderCell>
+        </TableRow>
+    </TableHeader>
+    <TableBody>
+        @foreach(var message in lastPage.Messages) {
+            var messageUser = lastPage.Users[message.UserId];
+            <TableRow>
+                <TableRowCell Style="width: 20%; max-width: 33%">@messageUser.Name</TableRowCell>
+                <TableRowCell Style="width: auto; min-width: 67%">@message.Text</TableRowCell>
+            </TableRow>
+        }
+    </TableBody>
+</Table>
+
+<AuthorizeView>
+    <Authorized>
+        <form @onsubmit="Post">
+            <Addons>
+                <Addon AddonType="AddonType.Start">
+                    <AddonLabel>Message</AddonLabel>
+                </Addon>
+                <TextEdit @bind-Text="@locals.Message" Placeholder="No ideas? Send an empty one!" type="search" />
+                <Addon AddonType="AddonType.End">
+                    <Button Type="@ButtonType.Submit" Color="Color.Success">Send</Button>
+                </Addon>
+            </Addons>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <SignInDropdown Why="to chat"></SignInDropdown>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    public class LocalsModel
+    {
+        private string _name = "";
+
+        public string Name {
+            get => _name;
+            set {
+                if (_name == value)
+                    return;
+                _name = value;
+                IsNameModified = true;
+            }
+        }
+
+        public bool IsNameModified { get; set; }
+        public string Message { get; set; } = "";
+    }
+
+    public record Model
+    {
+        public long UserCount { get; init; }
+        public long ActiveUserCount { get; init; }
+        public User User { get; init; } = User.NewGuest();
+        public ChatMessageList Messages { get; init; } = new();
+    }
+
+    protected override void OnInitialized()
+    {
+        // Mutable state content is updated implicitly via bind-* here,
+        // and since such a change doesn't trigger State recompute + StateHasChanged(),
+        // we enable this feat. to make it happen on event.
+        MustCallStateHasChangedAfterEvent = true;
+        base.OnInitialized();
+    }
+
+    protected override MutableState<LocalsModel>.Options GetMutableStateOptions()
+        => new () { InitialValue = new() };
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new () { InitialValue = new() };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        var userCount = await Chats.GetUserCount(cancellationToken);
+        var activeUserCount = await Chats.GetActiveUserCount(cancellationToken);
+        var user = await Auth.GetUser(Session, cancellationToken);
+        user = user.OrGuest();
+        var lastPage = await Chats.GetChatTail(30, cancellationToken);
+        if (!MutableState.Value.IsNameModified)
+            ResetName(user.IsAuthenticated() ? user.Name : "");
+        return new Model() {
+            UserCount = userCount,
+            ActiveUserCount = activeUserCount,
+            User = user,
+            Messages = lastPage,
+        };
+    }
+
+    private async Task SetName()
+    {
+        var locals = MutableState.Value;
+        var command = new Auth_EditUser(Session, locals.Name ?? "");
+        var result = await UICommander.Run(LocalCommand.New(() => {
+            if (command.Name!.Length < 4)
+                throw new ApplicationException("The name should be at least 4 character long.");
+        }));
+        if (result.HasError)
+            return; // The error will be displayed in the UI anyway
+
+        await UICommander.Run(command);
+   }
+
+    private async Task Post()
+    {
+        var result = await UICommander.Run(new Chat_Post(MutableState.Value.Message, Session));
+        if (result.HasError)
+            return; // The error will be displayed in the UI anyway
+
+        MutableState.Value.Message = "";
+        MutableState.Invalidate();
+    }
+
+    // Convenience shortcuts
+
+    private void ResetName(string name)
+    {
+        MutableState.Value.Name = name;
+        MutableState.Value.IsNameModified = false;
+        MutableState.Invalidate();
+    }
+}

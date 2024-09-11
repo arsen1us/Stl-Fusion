@@ -1,0 +1,74 @@
+@using System.Threading
+@using Stl
+@using System.Reactive
+@using System.Globalization
+@inherits MixedStateComponent<double, AccumulatorCard.LocalModel>
+@inject ISumService SumService
+@inject UICommander UICommander
+
+@{
+    var accumulator = State.LastNonErrorValue;
+    var locals = MutableState.Value;
+    var error = State.Error;
+}
+
+<Card Class="@CssClass">
+    <CardHeader>Accumulator</CardHeader>
+
+    <CardBody>
+        <StateOfStateBadge State="@State" />
+
+        <WhenUpdateError Exception="@error"/>
+
+        <Paragraph Margin="Margin.Is3.OnY">
+            Value: <b>@accumulator</b>
+            <Button Color="Color.Warning" @onclick="Reset">Reset</Button>
+        </Paragraph>
+
+        <form @onsubmit="Accumulate">
+            <Addons>
+                <Addon AddonType="AddonType.Start">
+                    <AddonLabel>Increment by</AddonLabel>
+                </Addon>
+                <TextEdit @bind-Text="@locals.ValueText" type="search" />
+                <Addon>
+                    <Button Type="@ButtonType.Submit" Color="Color.Success">Increment</Button>
+                </Addon>
+            </Addons>
+        </form>
+
+    </CardBody>
+</Card>
+
+@code {
+    public class LocalModel
+    {
+        public string ValueText { get; set; } = "1";
+        public double Value => double.TryParse(ValueText, out var v) ? v : 0;
+    }
+
+    [Inject] private UIActionTracker UIActionTracker { get; init; } = null!;
+
+    [Parameter] public string CssClass { get; set; } = "";
+    [Parameter] public TimeSpan UpdateDelay { get; set; } = TimeSpan.FromSeconds(1);
+
+    protected override void OnParametersSet()
+        => State.UpdateDelayer = new UpdateDelayer(UIActionTracker, UpdateDelay);
+
+    protected override MutableState<LocalModel>.Options GetMutableStateOptions()
+        => new () { InitialValue = new() };
+
+    protected override ComputedState<double>.Options GetStateOptions()
+        => new () { UpdateDelayer = new UpdateDelayer(UIActionTracker, UpdateDelay) };
+
+    protected override Task<double> ComputeState(CancellationToken cancellationToken)
+        => SumService.GetAccumulator(cancellationToken);
+
+    // Action handlers
+
+    private async Task Reset()
+        => await UICommander.Run(LocalCommand.New(() => SumService.Reset()));
+
+    private async Task Accumulate()
+        => await UICommander.Run(LocalCommand.New(() => SumService.Accumulate(MutableState.Value.Value)));
+}
